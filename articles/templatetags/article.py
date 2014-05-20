@@ -35,10 +35,7 @@ class ArticlesNode(template.Node):
 
 
         if articles is None:
-            user = None
-            if 'request' in context:
-                user = context['request'].user
-            articles = Article.objects.active(user=user).select_related()
+            articles = Article.objects.active().select_related()
 
         if limit is not None:
             articles = articles[:limit]
