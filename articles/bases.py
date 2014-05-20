@@ -6,22 +6,26 @@ from django.utils.translation import ugettext_lazy as _
 from django.conf.urls import patterns, url
 from django.utils.encoding import python_2_unicode_compatible
 
-try:
-    from feincms.admin.item_editor import ItemEditor
-except ImportError:
-    from feincm.admin.editor import ItemEditor
+from feincms.admin import item_editor, tree_editor
 from feincms.content.application import models as app_models
-from feincms.models import Base
+from feincms.models import create_base_model
 from feincms.module.mixins import ContentModelMixin
 from feincms.utils.managers import ActiveAwareContentManagerMixin
 
+from mptt.models import MPTTModel, TreeManager
+from .forms import ArticleAdminForm
 
-class ArticleManager(ActiveAwareContentManagerMixin, models.Manager):
+
+class ArticleManager(ActiveAwareContentManagerMixin, TreeManager):
     active_filters = {'simple-active': Q(active=True)}
+
+    # The fields which should be excluded when creating a copy.
+    exclude_from_copy = [
+        'id', 'tree_id', 'lft', 'rght', 'level', 'redirect_to']
 
 
 @python_2_unicode_compatible
-class BaseArticle(ContentModelMixin, Base):
+class BaseArticle(create_base_model(MPTTModel), ContentModelMixin):
     active = models.BooleanField(_('active'), default=True)
 
     title = models.CharField(_('title'), max_length=255)
@@ -80,7 +84,10 @@ ExtensionModelAdmin = get_callable(getattr(
     settings, 'ARTICLE_MODELADMIN_CLASS', 'feincms.extensions.ExtensionModelAdmin'))
 
 
-class ArticleAdmin(ItemEditor, ExtensionModelAdmin):
+class ArticleAdmin(item_editor.ItemEditor, tree_editor.TreeEditor, ExtensionModelAdmin):
+
+    form = ArticleAdminForm
+
     list_display = ['title', 'active']
     list_filter = []
     search_fields = ['title', 'slug']
@@ -88,11 +95,20 @@ class ArticleAdmin(ItemEditor, ExtensionModelAdmin):
     prepopulated_fields = {
         'slug': ('title',),
     }
+
+    fieldset_insertion_index = 2
     fieldsets = [
         (None, {
-            'fields': ['active', 'title', 'slug']
+            'fields': [
+                ('title', 'slug'),
+                ('active',),
+            ],
         }),
-        # <-- insertion point, extensions appear here, see insertion_index above
+        (_('Other options'), {
+            'classes': ['collapse'],
+            'fields': ['parent'],
+        }),
+        # <-- insertion point, extensions appear here, see insertion_index
+        # above
+        item_editor.FEINCMS_CONTENT_FIELDSET,
     ]
-
-    fieldset_insertion_index = 1
