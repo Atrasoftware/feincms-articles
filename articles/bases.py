@@ -37,6 +37,12 @@ class BaseArticle(create_base_model(MPTTModel), ContentModelMixin):
         editable=True,
     )
 
+    parent = models.ForeignKey(
+        'self', verbose_name=_('Parent'), blank=True,
+        null=True, related_name='children')
+    # Custom list_filter - see admin/filterspecs.py
+    parent.parent_filter = True
+
     class Meta:
         ordering = ['title']
         unique_together = []
