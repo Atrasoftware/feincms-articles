@@ -3,10 +3,15 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.translation import ugettext_lazy as _
 from feincms import extensions
 
+# Try to use autosuggest if it exists, otherwise,
+# falls back to the original taggit.
 try:
-    from taggit.managers import TaggableManager
+    from taggit_autosuggest.managers import TaggableManager
 except ImportError:
-    raise ImproperlyConfigured('You need to install django-taggit to use the tags extension')
+    try:
+        from taggit.managers import TaggableManager
+    except ImportError:
+        raise ImproperlyConfigured('You need to install django-taggit to use the tags extension')
 
 
 class Extension(extensions.Extension):
