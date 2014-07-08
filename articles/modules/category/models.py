@@ -7,8 +7,8 @@ from django.db.models import Q
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from feincms.admin import tree_editor as editor
-from feincms.content.application import models as app_models
-
+# from feincms.content.application import models as app_models
+from articles.bases import articles_permalink
 from articles.models import Article
 
 
@@ -46,7 +46,7 @@ class Category(models.Model):
                                             help_text=_('Users must be logged in and a member of the group(s) to access this group.'), )
 
     @denormalized(models.CharField, max_length=255, editable=False, default='', db_index=True)
-    @depend_on_related('self',type='forward')
+    @depend_on_related('self', type='forward')
     def local_url(self):
         if self.parent:
             root = self.parent.local_url
@@ -69,7 +69,7 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
-    @app_models.permalink
+    @articles_permalink
     def get_absolute_url(self):
         return ('article_category', 'articles.urls', (self.local_url,))
 
@@ -81,7 +81,7 @@ ModelAdmin = get_callable(getattr(settings, 'CATEGORY_MODELADMIN_CLASS', 'django
 
 class CategoryAdmin(editor.TreeEditor, ModelAdmin):
     list_display = ['name', 'order_by']
-    list_filter = ['parent',]
+    list_filter = ['parent', ]
     prepopulated_fields = {
         'slug': ('name',),
     }

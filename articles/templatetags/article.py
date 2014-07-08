@@ -33,13 +33,11 @@ class ArticlesNode(template.Node):
         articles = self.articles and self.articles.resolve(context)
         limit = self.limit and self.limit.resolve(context)
 
-
         if articles is None:
             articles = Article.objects.active().select_related()
 
         if limit is not None:
             articles = articles[:limit]
-
 
         if self.varname is not None:
             context[self.varname] = articles
@@ -56,7 +54,7 @@ class ArticlesNode(template.Node):
 
 @register.tag()
 def articles(parser, token):
-    bits = token.split_contents() 
+    bits = token.split_contents()
 
     varname = None
     try:
@@ -72,3 +70,74 @@ def articles(parser, token):
 
     return ArticlesNode(*args, **kwargs)
 
+
+from django.core.urlresolvers import NoReverseMatch
+from django.template import TemplateSyntaxError
+
+from articles.bases import articles_app_reverse as do_articles_app_reverse
+from django.utils.encoding import smart_str
+from django.template.defaulttags import kwarg_re
+
+
+class ArticlesAppReverseNode(template.Node):
+    def __init__(self, view_name, urlconf, args, kwargs, asvar):
+        self.view_name = view_name
+        self.urlconf = urlconf
+        self.args = args
+        self.kwargs = kwargs
+        self.asvar = asvar
+
+    def render(self, context):
+        args = [arg.resolve(context) for arg in self.args]
+        kwargs = dict([
+            (smart_str(k, 'ascii'), v.resolve(context))
+            for k, v in self.kwargs.items()])
+        view_name = self.view_name.resolve(context)
+        urlconf = self.urlconf.resolve(context)
+
+        try:
+            url = do_articles_app_reverse(
+                view_name, urlconf, args=args, kwargs=kwargs,
+                current_app=context.current_app)
+        except NoReverseMatch:
+            if self.asvar is None:
+                raise
+            url = ''
+
+        if self.asvar:
+            context[self.asvar] = url
+            return ''
+        else:
+            return url
+
+
+@register.tag
+def articles_app_reverse(parser, token):
+    bits = token.split_contents()
+    if len(bits) < 3:
+        raise TemplateSyntaxError(
+            "'%s' takes at least two arguments"
+            " (path to a view and a urlconf)" % bits[0])
+    viewname = parser.compile_filter(bits[1])
+    urlconf = parser.compile_filter(bits[2])
+    args = []
+    kwargs = {}
+    asvar = None
+    bits = bits[3:]
+    if len(bits) >= 2 and bits[-2] == 'as':
+        asvar = bits[-1]
+        bits = bits[:-2]
+
+    if len(bits):
+        for bit in bits:
+            match = kwarg_re.match(bit)
+            if not match:
+                raise TemplateSyntaxError(
+                    "Malformed arguments to app_reverse tag")
+            name, value = match.groups()
+            if name:
+                kwargs[name] = parser.compile_filter(value)
+            else:
+                args.append(parser.compile_filter(value))
+
+    return ArticlesAppReverseNode(viewname, urlconf, args, kwargs, asvar)

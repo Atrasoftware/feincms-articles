@@ -1,7 +1,8 @@
 from django.conf.urls import patterns, url
 from django.db import models
 from django.utils.translation import ugettext_lazy as _
-from feincms.content.application import models as app_models
+# from feincms.content.application import models as app_models
+from articles.bases import articles_permalink
 
 from feincms import extensions
 
@@ -28,7 +29,8 @@ class Extension(extensions.Extension):
                     'category_url': self.category.local_url,
                     'slug': self.slug,
                     })
-        self.model.get_absolute_url = app_models.permalink(get_absolute_url)
+        # self.model.get_absolute_url = app_models.permalink(get_absolute_url)
+        self.model.get_absolute_url = articles_permalink(get_absolute_url)
 
     def handle_modeladmin(self, modeladmin):
         modeladmin.list_filter += ['category', ]
