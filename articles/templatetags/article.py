@@ -71,6 +71,79 @@ def articles(parser, token):
     return ArticlesNode(*args, **kwargs)
 
 
+class FilteredArticlesNode(template.Node):
+    """
+        Output a list of articles.
+        If as varname is specified then add the result to the context.
+
+        Usage:
+            {% articles %}
+            OR
+            {% articles articles %}
+            OR
+            {% articles articles limit %}
+            OR
+            {% articles as artilce_list %}
+            OR
+            {% articles articles as artilce_list %}
+            OR
+            {% articles limit=limit as artilce_list %}
+            OR
+            {% articles category=categoryslug as filtered_article_list %}
+    """
+    def __init__(self, category_slug=None, articles=None, limit=None, varname=None):
+        self.category_slug = category_slug
+        self.articles = articles
+        self.limit = limit
+        self.varname = varname
+
+    def render(self, context):
+        articles = self.articles and self.articles.resolve(context)
+        limit = self.limit and self.limit.resolve(context)
+        category_slug = self.category_slug and\
+            self.category_slug.resolve(context)
+        category = Category.objects.get(slug__iexact=category_slug)
+
+        if articles is None:
+            articles = Article.objects.active().select_related().\
+                filter(category_id__exact=category.id).\
+                order_by(category.order_by)
+
+        if limit is not None:
+            articles = articles[:limit]
+
+        if self.varname is not None:
+            context[self.varname] = articles
+            return ''
+        else:
+            t = template.loader.select_template(['articles/articles.html'])
+            context.push()
+            context['articles'] = articles
+            output = t.render(context)
+            context.pop()
+
+            return output
+
+
+@register.tag()
+def articles_with_categoryslug(parser, token):
+    bits = token.split_contents()
+
+    varname = None
+    try:
+        if bits[-2] == 'as':
+            varname = bits[-1]
+            bits = bits[:-2]
+    except IndexError:
+        pass
+
+    args, kwargs = parse_tokens(parser, bits)
+    if varname is not None:
+        kwargs['varname'] = varname
+
+    return FilteredArticlesNode(*args, **kwargs)
+
+
 from django.core.urlresolvers import NoReverseMatch
 from django.template import TemplateSyntaxError
 
