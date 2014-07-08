@@ -127,7 +127,7 @@ def articles_app_reverse(viewname, urlconf=None, args=None, kwargs=None, prefix=
             content = appcontent_class.closest_match(
                 urlconf, kwargs['page_slug'])
             del kwargs['page_slug']
-        except KeyError:
+        except (KeyError, TypeError):
             content = appcontent_class.closest_match(urlconf)
 
         if content is not None:
