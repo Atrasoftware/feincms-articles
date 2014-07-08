@@ -116,7 +116,11 @@ def articles_app_reverse(viewname, urlconf=None, args=None, kwargs=None, prefix=
 
     # First time, the item get saved into cache
     if url_prefix is None:
-        appcontent_class = ArticlesApplicationContent._feincms_content_models[0]
+        # Manage different ApplicationContent content type creation order
+        try:
+            appcontent_class = ArticlesApplicationContent._feincms_content_models[1]
+        except:
+            appcontent_class = ArticlesApplicationContent._feincms_content_models[0]
 
         # !!!!!!! If Content is None, NoReverseMatch is raised
         try:
