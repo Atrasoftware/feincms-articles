@@ -3,6 +3,7 @@ from django import template
 from articles.models import Article
 from articles.modules.category.models import Category
 from articles.utils import parse_tokens
+from django.utils.translation import get_language
 
 register = template.Library()
 
@@ -55,8 +56,9 @@ def articlecategories(parser, token):
 
 class FilteredArticlesNode(template.Node):
     """
-        Output a list of filtered articles.
-        If as varname is specified then add the result to the context.
+        Output a list of articles, filtered by category & current
+        language. If as varname is specified then add the result to 
+        the context.
 
         Usage:
             {% articles %}
@@ -88,6 +90,7 @@ class FilteredArticlesNode(template.Node):
 
         if articles is None:
             articles = Article.objects.active().select_related().\
+                filter(language__exact=get_language()).\
                 filter(category_id__exact=category.id).\
                 order_by(category.order_by)
 
